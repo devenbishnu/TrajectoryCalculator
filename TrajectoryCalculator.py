@@ -2,6 +2,7 @@ import math
 import numpy
 import ballistics
 
+
 # Reynolds Calcs
 initial_velocity = 150  # m/s
 Kinematic_viscosity = 1.516e-5  # m^2/s
