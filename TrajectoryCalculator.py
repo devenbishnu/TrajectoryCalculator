@@ -1,7 +1,9 @@
 import math
 import numpy
+import scipy.integrate
 import ballistics
 
+steps = 100000
 
 # Reynolds Calcs
 initial_velocity = 150  # m/s
@@ -40,3 +42,15 @@ y1 = initial_velocity * math.sin(math.radians(angle))
 p0 = [x0, x1, y0, y1]
 
 tspan = [0, tmax]
+
+timestep = numpy.linspace(0, tmax, steps)
+
+results = scipy.integrate.solve_ivp(ballistics.ballistics, tspan, p0, t_eval=timestep, args=(cD_sphere, area,
+                                    density_of_air, m, g))
+t = results.t
+p = results.y
+
+target_val = 2
+while p[2][target_val] > 0:
+    target_val = target_val + 1
+targetrange = p[0][target_val]
