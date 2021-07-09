@@ -54,3 +54,10 @@ target_val = 2
 while p[2][target_val] > 0:
     target_val = target_val + 1
 targetrange = p[0][target_val]
+velocity = []
+KE = []
+PercentageKE = []
+for i in range(len(p[0])):
+    velocity.append(math.sqrt((p[1][i] ** 2) + p[3][i] ** 2))
+    KE.append(0.5 * m * (velocity[i] ** 2))
+    PercentageKE.append((KE[0] - KE[i]) / KE[0])
