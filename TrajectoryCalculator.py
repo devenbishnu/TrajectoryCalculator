@@ -4,7 +4,7 @@ import scipy.integrate
 import matplotlib.pyplot
 import ballistics
 
-steps = 1000000
+steps = 2500
 
 # Reynolds Calcs
 initial_velocity = 150  # m/s
@@ -65,8 +65,48 @@ for i in range(len(p[0])):
 polynomial = numpy.polynomial.polynomial.Polynomial.fit(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 5)
 pathpolygraph = numpy.polynomial.polynomial.polyval(p[0][0:(target_val + 1)], polynomial.convert().coef)
 
-matplotlib.pyplot.figure(figsize=(9, 9))
+matplotlib.pyplot.figure(figsize=(9, 12))
 matplotlib.pyplot.subplot(311)
 matplotlib.pyplot.plot(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 'ro')
 matplotlib.pyplot.plot(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)])
+matplotlib.pyplot.xlabel('X Position (m)')
+matplotlib.pyplot.ylabel('Y Position (m)')
+matplotlib.pyplot.savefig('RoundTrajectory', bbox_inches="tight")
+
+matplotlib.pyplot.subplot(312)
+matplotlib.pyplot.plot(p[0][0:(target_val + 1)], KE[0:(target_val + 1)])
+matplotlib.pyplot.xlabel('X Position (m)')
+matplotlib.pyplot.ylabel('Kinetic Energy (J)')
+matplotlib.pyplot.savefig('KineticEnergy', bbox_inches="tight")
+
+matplotlib.pyplot.subplot(313)
+matplotlib.pyplot.plot(p[0][0:(target_val + 1)], PercentageKE[0:(target_val + 1)])
+matplotlib.pyplot.xlabel('X Position (m)')
+matplotlib.pyplot.ylabel('Kinetic Energy Lost (%)')
+matplotlib.pyplot.savefig('KineticEnergy', bbox_inches="tight")
+
+# Solving for All Angles
+
+firing_table = [[0 for col in range(6)] for row in range(number_of_angles)]
+for index in range(number_of_angles):
+    x0 = 0
+    x1 = initial_velocity * math.cos(math.radians(angletable[index]))
+    y0 = gun_height
+    y1 = initial_velocity * math.sin(math.radians(angletable[index]))
+
+    p0 = [x0, x1, y0, y1]
+    tspan = [0, tmax]
+    results = scipy.integrate.solve_ivp(ballistics.ballistics, tspan, p0, t_eval=timestep, args=(cD_sphere, area,
+                                        density_of_air, m, g))
+    t = results.t
+    p = results.y
+
+    target_val = 10
+    while p[2][target_val] > 0:
+        target_val = target_val + 1
+    polynomial = numpy.polynomial.polynomial.Polynomial.fit(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 5)
+    pathpolygraph = numpy.polynomial.polynomial.polyval(p[0][0:(target_val + 1)], polynomial.convert().coef)
+    for i in range(1, 6):
+        firing_table[index][i] = polynomial.convert().coef[i - 1]
+
 matplotlib.pyplot.show()
