@@ -1,9 +1,10 @@
 import math
 import numpy
 import scipy.integrate
+import matplotlib.pyplot
 import ballistics
 
-steps = 100000
+steps = 1000000
 
 # Reynolds Calcs
 initial_velocity = 150  # m/s
@@ -61,3 +62,11 @@ for i in range(len(p[0])):
     velocity.append(math.sqrt((p[1][i] ** 2) + p[3][i] ** 2))
     KE.append(0.5 * m * (velocity[i] ** 2))
     PercentageKE.append((KE[0] - KE[i]) / KE[0])
+polynomial = numpy.polynomial.polynomial.Polynomial.fit(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 5)
+pathpolygraph = numpy.polynomial.polynomial.polyval(p[0][0:(target_val + 1)], polynomial.convert().coef)
+
+matplotlib.pyplot.figure(figsize=(9, 9))
+matplotlib.pyplot.subplot(311)
+matplotlib.pyplot.plot(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 'ro')
+matplotlib.pyplot.plot(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)])
+matplotlib.pyplot.show()
