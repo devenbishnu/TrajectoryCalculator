@@ -1,112 +1,56 @@
+import json
 import math
 import numpy
 import scipy.integrate
-import matplotlib.pyplot
-import ballistics
 
-steps = 2500
 
-# Reynolds Calcs
-initial_velocity = 150  # m/s
-Kinematic_viscosity = 1.516e-5  # m^2/s
-bb_diameter = 6e-3  # m
-density_of_air = 1.092  # kg/m^3
-accuracy_angle = 0.1
-angle = 0  # degrees
-RE = (initial_velocity * bb_diameter) / Kinematic_viscosity
+def ballistics(t, x, cD_sphere, Area, Density, m, g):
+    dfdt = [x[1], (1 / m) * (-1 * cD_sphere * Area * Density * (x[1] ** 2)), x[3], (1 / m) * (-1 * cD_sphere * Area * Density * (x[3] ** 2) * numpy.sign(x[3]) - (m * g))]
+    return dfdt
 
-# Coefficient of Drag Calculation
-cD_sphere = 0.5
-area = math.pi * 0.25 * (bb_diameter ** 2)  # m^2
 
-# Forces and Trajectory Parameters
-m = 0.2e-3  # kg
-gun_height = 1  # m
-g = 9.81  # m/s
-distance_measured = 20
-angle_measured = 5
-deltay = distance_measured * math.sin(math.radians(angle_measured))  # m
-deltax = distance_measured * math.cos(math.radians(angle_measured))  # m
-barrel_offset = 0.03 + gun_height
-
-# time_in_air = sqrt(2 * gun_height / g)
-tmax = 1000
-angletable = numpy.linspace(-45, 45, 451)
-number_of_angles = len(angletable)
-
-# Initial Conditions (Solving for one angle)
-x0 = 0
-x1 = initial_velocity * math.cos(math.radians(angle))
-y0 = barrel_offset
-y1 = initial_velocity * math.sin(math.radians(angle))
-
-p0 = [x0, x1, y0, y1]
-
-tspan = [0, tmax]
-
-timestep = numpy.linspace(0, tmax, steps)
-
-results = scipy.integrate.solve_ivp(ballistics.ballistics, tspan, p0, t_eval=timestep, args=(cD_sphere, area,
-                                    density_of_air, m, g))
-t = results.t
-p = results.y
-
-target_val = 2
-while p[2][target_val] > 0:
-    target_val = target_val + 1
-targetrange = p[0][target_val]
-velocity = []
-KE = []
-PercentageKE = []
-for i in range(len(p[0])):
-    velocity.append(math.sqrt((p[1][i] ** 2) + p[3][i] ** 2))
-    KE.append(0.5 * m * (velocity[i] ** 2))
-    PercentageKE.append((KE[0] - KE[i]) / KE[0])
-polynomial = numpy.polynomial.polynomial.Polynomial.fit(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 5)
-pathpolygraph = numpy.polynomial.polynomial.polyval(p[0][0:(target_val + 1)], polynomial.convert().coef)
-
-matplotlib.pyplot.figure(figsize=(9, 12))
-matplotlib.pyplot.subplot(311)
-matplotlib.pyplot.plot(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 'ro')
-matplotlib.pyplot.plot(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)])
-matplotlib.pyplot.xlabel('X Position (m)')
-matplotlib.pyplot.ylabel('Y Position (m)')
-matplotlib.pyplot.savefig('RoundTrajectory', bbox_inches="tight")
-
-matplotlib.pyplot.subplot(312)
-matplotlib.pyplot.plot(p[0][0:(target_val + 1)], KE[0:(target_val + 1)])
-matplotlib.pyplot.xlabel('X Position (m)')
-matplotlib.pyplot.ylabel('Kinetic Energy (J)')
-matplotlib.pyplot.savefig('KineticEnergy', bbox_inches="tight")
-
-matplotlib.pyplot.subplot(313)
-matplotlib.pyplot.plot(p[0][0:(target_val + 1)], PercentageKE[0:(target_val + 1)])
-matplotlib.pyplot.xlabel('X Position (m)')
-matplotlib.pyplot.ylabel('Kinetic Energy Lost (%)')
-matplotlib.pyplot.savefig('KineticEnergy', bbox_inches="tight")
-
-# Solving for All Angles
-
-firing_table = [[0 for col in range(6)] for row in range(number_of_angles)]
-for index in range(number_of_angles):
+def solve_initial_value_problem(initial_velocity, angle, barrel_offset, cD_sphere, area, density_of_air, m, g, tspan, timestep):
     x0 = 0
-    x1 = initial_velocity * math.cos(math.radians(angletable[index]))
-    y0 = gun_height
-    y1 = initial_velocity * math.sin(math.radians(angletable[index]))
-
+    x1 = initial_velocity * math.cos(math.radians(angle))
+    y0 = barrel_offset
+    y1 = initial_velocity * math.sin(math.radians(angle))
     p0 = [x0, x1, y0, y1]
-    tspan = [0, tmax]
-    results = scipy.integrate.solve_ivp(ballistics.ballistics, tspan, p0, t_eval=timestep, args=(cD_sphere, area,
-                                        density_of_air, m, g))
-    t = results.t
-    p = results.y
+    return scipy.integrate.solve_ivp(ballistics, tspan, p0, t_eval=timestep, args=(cD_sphere, area, density_of_air, m, g))
 
-    target_val = 10
+
+def solve_angle(initial_velocity, angle, barrel_offset, cD_sphere, area, density_of_air, m, g, tspan, timestep):
+    results = solve_initial_value_problem(initial_velocity, angle, barrel_offset, cD_sphere, area, density_of_air, m, g, tspan, timestep)
+    p = results.y
+    target_val = 0
     while p[2][target_val] > 0:
         target_val = target_val + 1
-    polynomial = numpy.polynomial.polynomial.Polynomial.fit(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 5)
-    pathpolygraph = numpy.polynomial.polynomial.polyval(p[0][0:(target_val + 1)], polynomial.convert().coef)
-    for i in range(1, 6):
-        firing_table[index][i] = polynomial.convert().coef[i - 1]
+    return p, target_val
 
-matplotlib.pyplot.show()
+
+def main():
+    steps = 200000
+    initial_velocity = 150  # m/s
+    bb_diameter = 6e-3  # m
+    density_of_air = 1.092  # kg/m^3
+    cD_sphere = 0.5
+    area = math.pi * 0.25 * (bb_diameter ** 2)  # m^2
+    m = 0.2e-3  # kg
+    gun_height = 1  # m
+    g = 9.81  # m/s
+    barrel_offset = 0.03 + gun_height
+    tmax = 1000
+    angletable = numpy.linspace(-45, 45, 10)
+    tspan = [0, tmax]
+    timestep = numpy.linspace(0, tmax, steps)
+    firing_table = {}
+    for angle in angletable:
+        p, target_val = solve_angle(initial_velocity, angle, barrel_offset, cD_sphere, area, density_of_air, m, g, tspan, timestep)
+        polynomial = numpy.polynomial.polynomial.Polynomial.fit(p[0][0:(target_val + 1)], p[2][0:(target_val + 1)], 5)
+        firing_table[angle] = {}
+        for coefficient in range(len(polynomial.convert().coef)):
+            firing_table[angle][coefficient] = '{:.{prec}f}'.format(polynomial.convert().coef[coefficient], prec=2)
+    with open('test.json', 'w') as file:
+        json.dump(firing_table, file)
+
+
+main()
